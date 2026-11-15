@@ -1,49 +1,50 @@
 import type { Post } from "../domain/post/entity.js";
-import type { PostRepository } from "../domain/post/repository.js";
+import type { CreatePostRepoInput, PostRepository } from "../domain/post/repository.js";
 
-export function createPostRepository(): PostRepository {
-    let posts: Post[] = [
-        {
-            id: 1,
-            title: "First post",
-            content: "Good post",
-            author: "Alina",
-            category: "programming"
-        },
-        {
-            id: 2,
-            title: "Second post",
-            content: "Good post",
-            author: "Alina",
-            category: "news"
-        }
-    ];
+type Database = typeof import("../prisma/db.js").db;
 
-    function getAllPosts(category?: string, take?: number): Post[] {
-        let result = [...posts];
+function mapRowToPost(row: {
+    id: number;
+    title: string;
+    content: string;
+    author: string | null;
+    category: string | null;
+}): Post {
+    return {
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        author: row.author ?? undefined,
+        category: row.category ?? undefined,
+    };
+}
 
-        if (category) {
-            result = result.filter((post) => post.category === category);
-        }
+export function createPostRepository(database: Database): PostRepository {
+    async function getAllPosts(category?: string, take?: number): Promise<Post[]> {
+        const baseQuery = database.orm.public.Post.orderBy((post) => post.id.asc());
+        const filteredQuery = category ? baseQuery.where({ category }) : baseQuery;
+        const rows = take !== undefined
+            ? await filteredQuery.limit(take).all()
+            : await filteredQuery.all();
 
-        if (take !== undefined) {
-            result = result.slice(0, take);
-        }
-
-        return result;
+        return rows.map(mapRowToPost);
     }
 
-    function createPost(post: Post): Promise<Post> {
-        return new Promise<Post>((resolve) => {
-            setTimeout(() => {
-                posts = [...posts, post];
-                resolve(post);
-            }, 1000);
-        });
-    }
+    async function createPost(post: CreatePostRepoInput): Promise<Post> {
+    const created = await database.orm.public.Post.create({
+        title: post.title,
+        content: post.content,
+        author: post.author ?? null,
+        category: post.category ?? null,
+    });
 
-    function findPostById(id: number): Post | undefined {
-        return posts.find((post) => post.id === id);
+    return mapRowToPost(created);
+}
+
+
+    async function findPostById(id: number): Promise<Post | undefined> {
+        const row = await database.orm.public.Post.where({ id }).first();
+        return row ? mapRowToPost(row) : undefined;
     }
 
     return { getAllPosts, createPost, findPostById };

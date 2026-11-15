@@ -32,7 +32,7 @@ export function createPostHandler(service: PostService): PostHandler {
             return;
         }
 
-        const posts = service.getPosts(category?.trim(), takeNum);
+        const posts = await service.getPosts(category?.trim(), takeNum);
         res.status(200).json(posts);
     }
 
@@ -49,7 +49,7 @@ export function createPostHandler(service: PostService): PostHandler {
             return;
         }
 
-        const post = service.getPost(postId);
+        const post = await service.getPost(postId);
 
         if (!post) {
             res.status(404).json({

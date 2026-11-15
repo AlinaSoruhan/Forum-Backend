@@ -9,15 +9,20 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js",
-    "build": "tsc"
+    "build": "tsc",
+    "contract:emit": "prisma contract emit"
   },
   "dependencies": {
+    "@prisma/orm-postgres": "^8.0.0-rc.23",
+    "dotenv": "^18.0.10",
     "express": "^5.2.1",
     "moment": "^2.30.1"
   },
   "devDependencies": {
+    "@prisma/cli-engine": "^0.9.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
+    "prisma": "^8.0.0-rc.33",
     "ts-node": "^10.9.2",
     "typescript": "^7.0.2"
   }
