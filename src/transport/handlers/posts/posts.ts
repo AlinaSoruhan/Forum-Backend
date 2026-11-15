@@ -1,6 +1,6 @@
 import type { ErrorResponse } from "../../dto/errors.js";
-import type { CreatePostRequest } from "../../dto/requests.js";
-import type { PostResponse } from "../../dto/responses.js";
+import type { CreatePostRequest } from "../../dto/post/requests.js";
+import type { PostResponse } from "../../dto/post/responses.js";
 import type { Request, Response } from "express";
 import type { PostService } from "../../../services/posts/posts.types.js";
 import type { Post } from "../../../domain/post/entity.js";
@@ -65,42 +65,52 @@ export function createPostHandler(service: PostService): PostHandler {
         req: Request<{}, {}, CreatePostRequest>,
         res: Response<PostResponse | ErrorResponse>
     ) {
-        const { title, content, author, category } = req.body || {};
-
-        if (
-            typeof title !== "string" || !title.trim() ||
-            typeof content !== "string" || !content.trim()
-        ) {
-            res.status(422).json({
-                message: "Fields 'title' and 'content' are required",
-            });
-            return;
-        }
-
-        if (
-            (author !== undefined && (typeof author !== "string" || !author.trim())) ||
-            (category !== undefined && (typeof category !== "string" || !category.trim()))
-        ) {
-            res.status(422).json({
-                message: "Fields 'author' and 'category' must be non-empty strings",
-            });
-            return;
-        }
-
         try {
+            const { title, content, author, categoryId } = req.body || {};
+
+            if (
+                typeof title !== "string" || !title.trim() ||
+                typeof content !== "string" || !content.trim()
+            ) {
+                res.status(422).json({
+                    message: "Fields 'title' and 'content' are required",
+                });
+                return;
+            }
+
+            if (author !== undefined && (typeof author !== "string" || !author.trim())) {
+                res.status(422).json({
+                    message: "Field 'author' must be a non-empty string",
+                });
+                return;
+            }
+
+            if (categoryId !== undefined && (!Number.isInteger(categoryId) || categoryId <= 0)) {
+                res.status(400).json({
+                    message: "Field 'categoryId' must be a positive integer",
+                });
+                return;
+            }
+
             const createdPost: Post = await service.createPost({
                 title: title.trim(),
                 content: content.trim(),
                 author: author?.trim(),
-                category: category?.trim(),
+                categoryId,
             });
 
             res.status(201).json(createdPost);
         } catch (error) {
-            console.error(error);
+            if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
+                res.status(404).json({
+                    message: "Category not found",
+                });
+                return;
+            }
 
+            console.error(error);
             res.status(500).json({
-                message: "Failed to create post",
+                message: "Internal server error",
             });
         }
     }

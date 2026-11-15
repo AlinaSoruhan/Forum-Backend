@@ -1,3 +1,5 @@
+import { isStructuredError } from "@prisma/orm-postgres/utils";
+import type { Category } from "../domain/category/entity.js";
 import type { Post } from "../domain/post/entity.js";
 import type { CreatePostRepoInput, PostRepository } from "../domain/post/repository.js";
 
@@ -8,44 +10,90 @@ function mapRowToPost(row: {
     title: string;
     content: string;
     author: string | null;
-    category: string | null;
+    categoryId: number | null;
+    category?: Category | null;
 }): Post {
     return {
         id: row.id,
         title: row.title,
         content: row.content,
         author: row.author ?? undefined,
-        category: row.category ?? undefined,
+        categoryId: row.categoryId,
+        category: row.category ?? null,
     };
 }
 
 export function createPostRepository(database: Database): PostRepository {
-    async function getAllPosts(category?: string, take?: number): Promise<Post[]> {
-        const baseQuery = database.orm.public.Post.orderBy((post) => post.id.asc());
-        const filteredQuery = category ? baseQuery.where({ category }) : baseQuery;
-        const rows = take !== undefined
-            ? await filteredQuery.limit(take).all()
-            : await filteredQuery.all();
+    return {
+                async getAllPosts(categoryName, take) {
+            let categoryId: number | undefined;
 
-        return rows.map(mapRowToPost);
-    }
+            if (categoryName) {
+                const category = await database.orm.public.Category
+                    .where({ name: categoryName })
+                    .first();
 
-    async function createPost(post: CreatePostRepoInput): Promise<Post> {
-    const created = await database.orm.public.Post.create({
-        title: post.title,
-        content: post.content,
-        author: post.author ?? null,
-        category: post.category ?? null,
-    });
+                if (!category) {
+                    return [];
+                }
 
-    return mapRowToPost(created);
-}
+                categoryId = category.id;
+            }
+
+            const baseQuery = database.orm.public.Post
+                .include("category")
+                .orderBy((post) => post.id.asc());
+
+            const query = categoryId !== undefined
+                ? baseQuery.where({ categoryId })
+                : baseQuery;
+
+            const rows = !take
+                ? await query.all()
+                : await query.limit(take).all();
+
+            return rows.map(mapRowToPost);
+        },
 
 
-    async function findPostById(id: number): Promise<Post | undefined> {
-        const row = await database.orm.public.Post.where({ id }).first();
-        return row ? mapRowToPost(row) : undefined;
-    }
+        async createPost(post: CreatePostRepoInput) {
+            try {
+                const { categoryId, ...fields } = post;
 
-    return { getAllPosts, createPost, findPostById };
+                const created = categoryId !== undefined
+                    ? await database.orm.public.Post.create({
+                        title: fields.title,
+                        content: fields.content,
+                        author: fields.author ?? null,
+                        category: (category) => category.connect({ id: categoryId }),
+                    })
+                    : await database.orm.public.Post.create({
+                        title: fields.title,
+                        content: fields.content,
+                        author: fields.author ?? null,
+                    });
+
+                const fullPost = await database.orm.public.Post
+                    .where({ id: created.id })
+                    .include("category")
+                    .first();
+
+                return mapRowToPost(fullPost ?? created);
+            } catch (error) {
+                if (isStructuredError(error) && error.code === "ORM.RELATION_ROW_MISSING") {
+                    throw new Error("CATEGORY_NOT_FOUND");
+                }
+                throw error;
+            }
+        },
+
+        async findPostById(id) {
+            const row = await database.orm.public.Post
+                .where({ id })
+                .include("category")
+                .first();
+
+            return row ? mapRowToPost(row) : undefined;
+        },
+    };
 }

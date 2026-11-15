@@ -1,7 +1,14 @@
 import type { Post } from "./entity.js";
 
+export interface CreatePostRepoInput {
+    title: string;
+    content: string;
+    author?: string;
+    categoryId?: number;
+}
+
 export interface PostRepository {
-    getAllPosts: (category?: string, take?: number) => Post[];
-    createPost: (post: Post) => Promise<Post>;
-    findPostById: (id: number) => Post | undefined;
+    getAllPosts: (categoryName?: string, take?: number) => Promise<Post[]>;
+    createPost: (post: CreatePostRepoInput) => Promise<Post>;
+    findPostById: (id: number) => Promise<Post | undefined>;
 }
