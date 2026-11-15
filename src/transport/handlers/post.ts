@@ -1,8 +1,15 @@
-import { getPosts, getPost, createPost } from "../services/post.js";
+import { getPosts, getPost, createPost } from "../../services/post.js";
+import type { ErrorResponse } from "../dto/errors.js";
+import type { CreatePostRequest } from "../dto/requests.js";
+import type { PostResponse } from "../dto/responses.js";
+import type { Request, Response } from "express";
 
-export function getAllPosts(req, res) {
+export function getAllPosts(
+    req: Request,
+    res: Response<PostResponse[] | ErrorResponse>
+) {
     const { category, take } = req.query;
-    let takeNum;
+    let takeNum: number | undefined;
 
     if (take !== undefined) {
         takeNum = Number(take);
@@ -24,7 +31,10 @@ export function getAllPosts(req, res) {
     return res.status(200).json(posts);
 }
 
-export function getPostById(req, res) {
+export function getPostById(
+    req: Request,
+    res: Response<PostResponse | ErrorResponse>
+) {
     const postId = Number(req.params.id);
 
     if (!Number.isInteger(postId) || postId <= 0) {
@@ -44,7 +54,10 @@ export function getPostById(req, res) {
     return res.status(200).json(post);
 }
 
-export async function createNewPost(req, res) {
+export async function createNewPost(
+    req: Request<{}, {}, CreatePostRequest>,
+    res: Response<PostResponse | ErrorResponse>
+) {
     const { title, content, author, category } = req.body || {};
 
     if (
