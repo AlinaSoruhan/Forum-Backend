@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import type { PostResponse } from "../../dto/responses.js";
+import type { PostResponse } from "../../dto/post/responses.js";
 import type { ErrorResponse } from "../../dto/errors.js";
-import type { CreatePostRequest } from "../../dto/requests.js";
+import type { CreatePostRequest } from "../../dto/post/requests.js";
 
 export interface PostHandler {
     getAllPosts: (
