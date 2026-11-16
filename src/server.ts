@@ -1,4 +1,6 @@
 import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 import { db } from "./prisma/db.js";
 import { createPostRepository } from "./repositories/post.js";
 import { createPostService } from "./services/posts/post.js";
@@ -13,18 +15,20 @@ import { createAuthService } from "./services/user/user.js";
 import { createUserHandler } from "./transport/handlers/user/user.js";
 import { hashPassword, verifyPassword } from "./lib/password.js";
 import { createUserRouter } from "./transport/routers/auth.js";
-import { signAccessToken } from "./lib/jwt.js";
+import { signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken } from "./lib/jwt.js";
+import { createRequireAuth } from "./transport/middlewares/require-auth.js";
 
 const PORT = 8000;
 const HOST = "localhost";
 
 const app = express();
-app.use(express.json());
+
+const requireAuth = createRequireAuth(verifyAccessToken);
 
 const postRepository = createPostRepository(db);
 const postService = createPostService(postRepository);
 const postHandler = createPostHandler(postService);
-const postRouter = createPostRouter(postHandler);
+const postRouter = createPostRouter(postHandler, requireAuth);
 
 const categoryRepository = createCategoryRepository(db);
 const categoryService = createCategoryService(categoryRepository);
@@ -35,10 +39,18 @@ const userRepository = createUserRepository(db);
 const userService = createAuthService(
     userRepository,
     { hash: hashPassword, verify: verifyPassword },
-    { signAccessToken }
+    { signAccessToken, signRefreshToken },
+    { verifyAccessToken, verifyRefreshToken }
 );
 const userHandler = createUserHandler(userService);
-const userRouter = createUserRouter(userHandler);
+const userRouter = createUserRouter(userHandler, requireAuth);
+
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+}));
+app.use(cookieParser());
+app.use(express.json());
 
 app.use("/posts", postRouter);
 app.use("/categories", categoryRouter);
