@@ -11,13 +11,15 @@ export function createPostService(repository: PostRepository): PostService {
     }
 
     function createPost(data: CreatePostInput) {
-        return repository.createPost({
-            title: data.title,
-            content: data.content,
-            author: data.author,
-            categoryId: data.categoryId,
-        });
-    }
+    return repository.createPost({
+        title: data.title,
+        content: data.content,
+        author: data.author,
+        userId: data.userId,
+        categoryId: data.categoryId,
+    });
+}
+
 
     return { getPosts, getPost, createPost };
 }
