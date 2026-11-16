@@ -66,6 +66,14 @@ export function createPostHandler(service: PostService): PostHandler {
         res: Response<PostResponse | ErrorResponse>
     ) {
         try {
+            const userId = Number(res.locals.userId);
+            if (!Number.isInteger(userId) || userId <= 0) {
+                res.status(401).json({
+                    message: "Unauthorized",
+                });
+                return;
+            }
+
             const { title, content, author, categoryId } = req.body || {};
 
             if (
@@ -96,6 +104,7 @@ export function createPostHandler(service: PostService): PostHandler {
                 title: title.trim(),
                 content: content.trim(),
                 author: author?.trim(),
+                userId,
                 categoryId,
             });
 

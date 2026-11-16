@@ -10,6 +10,8 @@ function mapRowToPost(row: {
     title: string;
     content: string;
     author: string | null;
+    userId?: number | null;
+    user?: { id: number; email: string } | null;
     categoryId: number | null;
     category?: Category | null;
 }): Post {
@@ -17,7 +19,7 @@ function mapRowToPost(row: {
         id: row.id,
         title: row.title,
         content: row.content,
-        author: row.author ?? undefined,
+        author: row.author ?? row.user?.email ?? undefined,
         categoryId: row.categoryId,
         category: row.category ?? null,
     };
@@ -25,7 +27,7 @@ function mapRowToPost(row: {
 
 export function createPostRepository(database: Database): PostRepository {
     return {
-                async getAllPosts(categoryName, take) {
+        async getAllPosts(categoryName, take) {
             let categoryId: number | undefined;
 
             if (categoryName) {
@@ -42,6 +44,7 @@ export function createPostRepository(database: Database): PostRepository {
 
             const baseQuery = database.orm.public.Post
                 .include("category")
+                .include("user")
                 .orderBy((post) => post.id.asc());
 
             const query = categoryId !== undefined
@@ -55,27 +58,26 @@ export function createPostRepository(database: Database): PostRepository {
             return rows.map(mapRowToPost);
         },
 
-
         async createPost(post: CreatePostRepoInput) {
             try {
-                const { categoryId, ...fields } = post;
+                const { categoryId, userId, ...fields } = post;
 
-                const created = categoryId !== undefined
-                    ? await database.orm.public.Post.create({
-                        title: fields.title,
-                        content: fields.content,
-                        author: fields.author ?? null,
-                        category: (category) => category.connect({ id: categoryId }),
-                    })
-                    : await database.orm.public.Post.create({
-                        title: fields.title,
-                        content: fields.content,
-                        author: fields.author ?? null,
-                    });
+                const created = await database.orm.public.Post.create({
+                    title: fields.title,
+                    content: fields.content,
+                    author: fields.author ?? null,
+                    ...(userId !== undefined
+                        ? { user: (user) => user.connect({ id: userId }) }
+                        : {}),
+                    ...(categoryId !== undefined
+                        ? { category: (category) => category.connect({ id: categoryId }) }
+                        : {}),
+                });
 
                 const fullPost = await database.orm.public.Post
                     .where({ id: created.id })
                     .include("category")
+                    .include("user")
                     .first();
 
                 return mapRowToPost(fullPost ?? created);
@@ -91,6 +93,7 @@ export function createPostRepository(database: Database): PostRepository {
             const row = await database.orm.public.Post
                 .where({ id })
                 .include("category")
+                .include("user")
                 .first();
 
             return row ? mapRowToPost(row) : undefined;
