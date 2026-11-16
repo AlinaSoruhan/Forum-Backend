@@ -1,7 +1,10 @@
+import type { CategoryResponse } from "../category/responses.js";
+
 export interface PostResponse {
     id: number;
     title: string;
     content: string;
     author?: string;
-    category?: string;
+    categoryId?: number | null;
+    category?: CategoryResponse | null;
 }
