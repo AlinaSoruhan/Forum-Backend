@@ -4,8 +4,10 @@ export interface CreatePostInput {
     title: string;
     content: string;
     author?: string;
+    userId?: number;
     categoryId?: number;
 }
+
 
 export interface PostService {
     getPosts: (categoryName?: string, take?: number) => Promise<Post[]>;

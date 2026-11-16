@@ -23,3 +23,12 @@ model Post {
   categoryId Int?
   category   Category? @relation(fields: [categoryId], references: [id])
 }
+
+model RefreshSession {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

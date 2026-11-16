@@ -4,6 +4,7 @@ export interface CreatePostRepoInput {
     title: string;
     content: string;
     author?: string;
+    userId?: number;
     categoryId?: number;
 }
 
